@@ -20,7 +20,11 @@ async function bootstrap(): Promise<void> {
   app.enableShutdownHooks();
 
   await app.listen(env.PORT, "0.0.0.0");
-  logger.info("example-api listening", { port: env.PORT, dbEnabled: Boolean(env.DATABASE_URL) });
+  logger.info("example-api listening", {
+    port: env.PORT,
+    dbEnabled: Boolean(env.DATABASE_URL),
+    startedAt: new Date().toISOString(),
+  });
 }
 
 bootstrap().catch((error) => {
