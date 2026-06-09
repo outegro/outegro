@@ -1,5 +1,5 @@
 import { Injectable, type OnModuleDestroy } from "@nestjs/common";
-import { type DbHandle, createDb, pingDb } from "@outegro/db";
+import { createDb, type DbHandle, pingDb } from "@outegro/db";
 import { env } from "./config";
 
 /**
@@ -8,9 +8,7 @@ import { env } from "./config";
  */
 @Injectable()
 export class DbService implements OnModuleDestroy {
-  private readonly handle: DbHandle | null = env.DATABASE_URL
-    ? createDb(env.DATABASE_URL)
-    : null;
+  private readonly handle: DbHandle | null = env.DATABASE_URL ? createDb(env.DATABASE_URL) : null;
 
   get enabled(): boolean {
     return this.handle !== null;

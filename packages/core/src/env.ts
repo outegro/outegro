@@ -1,4 +1,4 @@
-import { z } from "zod";
+import type { z } from "zod";
 
 /**
  * Validate `process.env` (or any source) against a Zod schema.
