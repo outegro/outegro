@@ -1,0 +1,12 @@
+packages:
+  - "apps/*"
+  - "packages/*"
+
+# Native deps allowed to run install/build scripts (pnpm blocks them by default)
+onlyBuiltDependencies:
+  - esbuild
+  - sharp
+  - "@swc/core"
+  - "@tailwindcss/oxide"
+  - unrs-resolver
+  - "@parcel/watcher"
