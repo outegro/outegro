@@ -54,6 +54,11 @@ jobs:
               - 'packages/**'
               - 'infra/Dockerfile.next'
               - 'pnpm-lock.yaml'
+            auth-backend:
+              - 'apps/auth-backend/**'
+              - 'packages/**'
+              - 'infra/Dockerfile.nest'
+              - 'pnpm-lock.yaml'
 
   images:
     needs: [check, changes]

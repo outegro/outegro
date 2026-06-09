@@ -17,6 +17,12 @@
   "linter": {
     "enabled": true
   },
+  "javascript": {
+    "parser": {
+      // NestJS uses TypeScript parameter decorators (@Inject(...) in constructors).
+      "unsafeParameterDecoratorsEnabled": true
+    }
+  },
   "css": {
     "parser": {
       "tailwindDirectives": true
@@ -26,7 +32,7 @@
     {
       // NestJS relies on emitted decorator metadata, so DI'd classes must be
       // value imports (not `import type`). Biome can't see that — disable the rule.
-      "includes": ["apps/example-api/**"],
+      "includes": ["apps/example-api/**", "apps/auth-backend/**"],
       "linter": {
         "rules": {
           "style": {
