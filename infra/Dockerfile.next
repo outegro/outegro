@@ -1,0 +1,47 @@
+# syntax=docker.io/docker/dockerfile:1.7
+# Multi-stage build for a Next.js (standalone) app in the Turborepo monorepo.
+# Usage: docker build -f infra/Dockerfile.next --build-arg APP=<app-name> .
+ARG NODE_VERSION=24-alpine
+
+FROM node:${NODE_VERSION} AS base
+ENV PNPM_HOME=/pnpm
+ENV PATH="${PNPM_HOME}:${PATH}"
+ENV NEXT_TELEMETRY_DISABLED=1
+RUN corepack enable
+WORKDIR /app
+
+FROM base AS pruner
+ARG APP
+COPY . .
+RUN pnpm dlx turbo@2.9.16 prune "${APP}" --docker
+
+FROM base AS builder
+ARG APP
+ENV NODE_ENV=production
+COPY --from=pruner /app/out/json/ .
+RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile
+COPY --from=pruner /app/out/full/ .
+COPY --from=pruner /app/tsconfig.base.json ./tsconfig.base.json
+RUN pnpm turbo run build --filter="${APP}"
+
+# --- Runtime: Next.js standalone server ---
+FROM node:${NODE_VERSION} AS runner
+ARG APP
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
+ENV HOSTNAME=0.0.0.0
+ENV PORT=3000
+WORKDIR /app
+RUN addgroup -g 1001 -S nodejs && adduser -S nextjs -u 1001
+
+# standalone output mirrors the monorepo layout (outputFileTracingRoot = repo root)
+COPY --from=builder --chown=nextjs:nodejs /app/apps/${APP}/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/apps/${APP}/.next/static ./apps/${APP}/.next/static
+COPY --from=builder --chown=nextjs:nodejs /app/apps/${APP}/public ./apps/${APP}/public
+
+WORKDIR /app/apps/${APP}
+USER nextjs
+EXPOSE 3000
+HEALTHCHECK --interval=30s --timeout=3s --start-period=15s --retries=3 \
+  CMD wget -qO- http://127.0.0.1:3000/api/health || exit 1
+CMD ["node", "server.js"]

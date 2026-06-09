@@ -1,0 +1,43 @@
+# syntax=docker.io/docker/dockerfile:1.7
+# Multi-stage build for a NestJS app in the Turborepo monorepo.
+# Usage: docker build -f infra/Dockerfile.nest --build-arg APP=<app-name> .
+ARG NODE_VERSION=24-alpine
+
+FROM node:${NODE_VERSION} AS base
+ENV PNPM_HOME=/pnpm
+ENV PATH="${PNPM_HOME}:${PATH}"
+RUN corepack enable
+WORKDIR /app
+
+# --- Prune the monorepo down to just this app + its workspace deps ---
+FROM base AS pruner
+ARG APP
+COPY . .
+RUN pnpm dlx turbo@2.9.16 prune "${APP}" --docker
+
+# --- Install pruned deps, then build with turbo ---
+FROM base AS builder
+ARG APP
+# Lockfile + manifests first for layer caching
+COPY --from=pruner /app/out/json/ .
+RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile
+# Full pruned source + the root base tsconfig (referenced via extends)
+COPY --from=pruner /app/out/full/ .
+COPY --from=pruner /app/tsconfig.base.json ./tsconfig.base.json
+RUN pnpm turbo run build --filter="${APP}"
+
+# --- Minimal runtime image ---
+FROM node:${NODE_VERSION} AS runner
+ARG APP
+ENV NODE_ENV=production
+ENV PORT=3000
+WORKDIR /app
+RUN addgroup -g 1001 -S nodejs && adduser -S nodeapp -u 1001
+COPY --from=builder --chown=nodeapp:nodejs /app .
+# node runs as PID 1 (exec form) so SIGTERM reaches it -> graceful shutdown
+WORKDIR /app/apps/${APP}
+USER nodeapp
+EXPOSE 3000
+HEALTHCHECK --interval=30s --timeout=3s --start-period=15s --retries=3 \
+  CMD wget -qO- http://127.0.0.1:3000/health || exit 1
+CMD ["node", "dist/main"]
