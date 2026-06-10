@@ -1,6 +1,8 @@
-import { createHash, randomInt } from "node:crypto";
-import { HttpException, HttpStatus, Inject, Injectable } from "@nestjs/common";
+import { createHash, randomInt, randomUUID } from "node:crypto";
+import { AmqpConnection } from "@golevelup/nestjs-rabbitmq";
+import { HttpException, HttpStatus, Inject, Injectable, Optional } from "@nestjs/common";
 import { createLogger } from "@outegro/core";
+import { Exchanges, type NotifyRequestedEvent, RoutingKeys } from "@outegro/events";
 import { and, desc, eq, gt, isNull, or } from "drizzle-orm";
 import { env } from "../config";
 import { type AuthDb, DB } from "../db/db.module";
@@ -34,6 +36,7 @@ export class AuthService {
     @Inject(DB) private readonly db: AuthDb,
     private readonly tokens: TokensService,
     private readonly rl: RateLimitService,
+    @Optional() private readonly amqp?: AmqpConnection,
   ) {}
 
   async requestCode(email: string, meta: ReqMeta): Promise<void> {
@@ -50,9 +53,28 @@ export class AuthService {
       .insert(loginCodes)
       .values({ userId: user.id, codeHash: hashCode(email, code), expiresAt });
 
-    // Ch3: delivery stubbed — notifications-backend wires real email/Telegram in Ch5.
-    logger.info("login code issued (DEV delivery — logged, not emailed)", { email, code });
-    // TODO(ch5): publish auth.login.code_requested on the high-priority RabbitMQ path.
+    // Always log (handy in dev / if RabbitMQ is degraded).
+    logger.info("login code issued", { email, amqpAvailable: Boolean(this.amqp) });
+
+    // Publish to the high-priority path for notifications-backend to deliver.
+    if (this.amqp) {
+      const event: NotifyRequestedEvent = {
+        id: randomUUID(),
+        userId: user.id,
+        template: "login_code",
+        channels: ["email"],
+        to: { email },
+        data: { code },
+        requestedAt: new Date().toISOString(),
+      };
+      void Promise.resolve(
+        this.amqp.publish(Exchanges.Notify, RoutingKeys.NotifyLoginCode, event, {
+          priority: 10,
+          persistent: true,
+          messageId: event.id,
+        }),
+      ).catch((error) => logger.error("publish login code failed", { error: String(error) }));
+    }
   }
 
   async verifyCode(

@@ -32,7 +32,7 @@
     {
       // NestJS relies on emitted decorator metadata, so DI'd classes must be
       // value imports (not `import type`). Biome can't see that — disable the rule.
-      "includes": ["apps/example-api/**", "apps/auth-backend/**"],
+      "includes": ["apps/example-api/**", "apps/auth-backend/**", "apps/notifications-backend/**"],
       "linter": {
         "rules": {
           "style": {

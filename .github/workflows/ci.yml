@@ -68,6 +68,11 @@ jobs:
               - 'packages/**'
               - 'infra/Dockerfile.next'
               - 'pnpm-lock.yaml'
+            notifications-backend:
+              - 'apps/notifications-backend/**'
+              - 'packages/**'
+              - 'infra/Dockerfile.nest'
+              - 'pnpm-lock.yaml'
 
   images:
     needs: [check, changes]

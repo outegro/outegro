@@ -22,15 +22,33 @@ export type RoutingKey = (typeof RoutingKeys)[keyof typeof RoutingKeys];
 
 export type NotificationChannel = "email" | "telegram";
 
+/** Where to deliver. Publisher includes what it knows (auth knows the email). */
+export interface NotifyTarget {
+  email?: string;
+  telegramChatId?: string;
+}
+
 export interface NotifyRequestedEvent {
   /** Idempotency key — consumers dedupe on this. */
   id: string;
   userId: string;
+  /** Template name, e.g. "login_code" | "security_alert". */
   template: string;
+  /** Preferred channels; mandatory templates ignore user opt-outs. */
   channels: NotificationChannel[];
+  to: NotifyTarget;
+  /** Template variables (e.g. { code: "123456" }). */
   data: Record<string, unknown>;
   /** ISO timestamp. */
   requestedAt: string;
+}
+
+/** Mandatory (security/transactional) templates always send, ignoring preferences. */
+export const MandatoryTemplates = ["login_code", "security_alert"] as const;
+export type MandatoryTemplate = (typeof MandatoryTemplates)[number];
+
+export function isMandatory(template: string): boolean {
+  return (MandatoryTemplates as readonly string[]).includes(template);
 }
 
 /** Map each routing key to its payload type for type-safe publish/consume. */

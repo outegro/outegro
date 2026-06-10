@@ -1,5 +1,5 @@
 {
-  "name": "auth-backend",
+  "name": "notifications-backend",
   "version": "0.0.0",
   "private": true,
   "scripts": {
@@ -17,17 +17,13 @@
     "@nestjs/common": "^11.1.26",
     "@nestjs/core": "^11.1.26",
     "@nestjs/platform-express": "^11.1.26",
-    "@outegro/auth-client": "workspace:*",
     "@outegro/contracts": "workspace:*",
     "@outegro/core": "workspace:*",
     "@outegro/db": "workspace:*",
     "@outegro/events": "workspace:*",
     "amqp-connection-manager": "^5.0.0",
     "amqplib": "^0.10.9",
-    "cookie-parser": "^1.4.7",
     "drizzle-orm": "^0.45.2",
-    "ioredis": "^5.11.1",
-    "jose": "^5.10.0",
     "postgres": "^3.4.9",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.2"
@@ -35,7 +31,6 @@
   "devDependencies": {
     "@nestjs/cli": "^11.0.21",
     "@nestjs/schematics": "^11.1.0",
-    "@types/cookie-parser": "^1.4.9",
     "@types/express": "^5.0.6",
     "drizzle-kit": "^0.31.10"
   }

@@ -9,6 +9,8 @@ export const env = loadEnv(
 
     DATABASE_URL: z.string(),
     REDIS_URL: z.string(),
+    // Optional: when set, login codes are published to RabbitMQ for delivery.
+    RABBITMQ_URL: z.string().optional(),
 
     // ES256 private key (PKCS8 PEM). If absent in dev, an ephemeral key is generated
     // (fine for a single local instance; prod MUST set this — a sealed secret —
