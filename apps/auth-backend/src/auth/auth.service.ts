@@ -53,11 +53,9 @@ export class AuthService {
       .insert(loginCodes)
       .values({ userId: user.id, codeHash: hashCode(email, code), expiresAt });
 
-    // Always log (handy in dev / if RabbitMQ is degraded).
-    logger.info("login code issued", { email, amqpAvailable: Boolean(this.amqp) });
-
-    // Publish to the high-priority path for notifications-backend to deliver.
     if (this.amqp) {
+      // Publish to the high-priority path for notifications-backend to deliver.
+      logger.info("login code issued", { email });
       const event: NotifyRequestedEvent = {
         id: randomUUID(),
         userId: user.id,
@@ -74,6 +72,9 @@ export class AuthService {
           messageId: event.id,
         }),
       ).catch((error) => logger.error("publish login code failed", { error: String(error) }));
+    } else {
+      // No delivery path (RabbitMQ unset) — log the code so it stays retrievable.
+      logger.info("login code issued (no delivery path — code logged)", { email, code });
     }
   }
 
