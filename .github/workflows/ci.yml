@@ -59,6 +59,15 @@ jobs:
               - 'packages/**'
               - 'infra/Dockerfile.nest'
               - 'pnpm-lock.yaml'
+            landing-web:
+              - 'apps/landing-web/**'
+              - 'infra/Dockerfile.next'
+              - 'pnpm-lock.yaml'
+            auth-web:
+              - 'apps/auth-web/**'
+              - 'packages/**'
+              - 'infra/Dockerfile.next'
+              - 'pnpm-lock.yaml'
 
   images:
     needs: [check, changes]
