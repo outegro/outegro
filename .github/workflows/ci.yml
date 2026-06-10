@@ -114,6 +114,10 @@ jobs:
         run: |
           git clone --depth 1 "https://x-access-token:${GITOPS_TOKEN}@github.com/outegro/gitops.git" gitops
           cd gitops
+          if [ ! -f "values/${APP}.yaml" ]; then
+            echo "values/${APP}.yaml not present yet (app not deployed) — skipping bump"
+            exit 0
+          fi
           yq -i ".image.tag = \"${TAG}\"" "values/${APP}.yaml"
           git config user.name "outegro-ci"
           git config user.email "ci@outegro.com"
