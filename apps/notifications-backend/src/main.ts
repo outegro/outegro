@@ -4,6 +4,7 @@ import { createLogger } from "@outegro/core";
 import { AppModule } from "./app.module";
 import { env } from "./config";
 
+// Channel-agnostic delivery: consumes notify.* from RabbitMQ → Resend / Telegram.
 const logger = createLogger({ service: "notifications-backend" });
 
 async function bootstrap(): Promise<void> {
