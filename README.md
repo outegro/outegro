@@ -7,8 +7,10 @@ Outegro monorepo — pnpm workspaces + Turborepo. Shared code lives in `packages
 
 ```
 apps/
-  example-api/     NestJS service template (health + deep health, graceful shutdown)
-  example-web/     Next.js app template (standalone, next-intl, TanStack Query, Tailwind 4)
+  auth-backend/        Email-code login, JWT/JWKS, sessions, refresh (NestJS)
+  auth-web/            Login + profile (Next.js, BFF-lite)
+  landing-web/         outegro.com services overview (Next.js)
+  notifications-backend/  Channel-agnostic delivery: Resend + Telegram (NestJS)
 packages/
   core/            logger, env validation, errors, graceful shutdown
   contracts/       shared Zod schemas + types (FE/BE source of truth)
@@ -35,8 +37,8 @@ pnpm build                           # turbo: build packages, then apps
 pnpm turbo run lint typecheck build  # full check
 
 # run a single app
-pnpm --filter example-api start:dev
-pnpm --filter example-web dev
+pnpm --filter auth-backend start:dev
+pnpm --filter auth-web dev
 ```
 
 Each app exposes `/health` (liveness) and `/api/metrics` (frontend) or `/health/deep`

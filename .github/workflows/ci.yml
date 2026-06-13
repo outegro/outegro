@@ -44,16 +44,6 @@ jobs:
         with:
           # A shared-package or lockfile change fans out to every app.
           filters: |
-            example-api:
-              - 'apps/example-api/**'
-              - 'packages/**'
-              - 'infra/Dockerfile.nest'
-              - 'pnpm-lock.yaml'
-            example-web:
-              - 'apps/example-web/**'
-              - 'packages/**'
-              - 'infra/Dockerfile.next'
-              - 'pnpm-lock.yaml'
             auth-backend:
               - 'apps/auth-backend/**'
               - 'packages/**'
