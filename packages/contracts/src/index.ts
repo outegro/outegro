@@ -87,6 +87,38 @@ export const sessionsListSchema = z.object({
 });
 export type SessionsList = z.infer<typeof sessionsListSchema>;
 
+// --- Passkeys / WebAuthn (Chapter 4) ---
+
+/** RegistrationResponseJSON / AuthenticationResponseJSON from @simplewebauthn/browser. */
+export const webauthnCredentialResponseSchema = z.object({
+  id: z.string(),
+  rawId: z.string(),
+  type: z.literal("public-key"),
+  clientExtensionResults: z.record(z.string(), z.unknown()),
+  authenticatorAttachment: z.string().optional(),
+  response: z.record(z.string(), z.unknown()),
+});
+export type WebauthnCredentialResponse = z.infer<typeof webauthnCredentialResponseSchema>;
+
+export const passkeyAuthenticationVerifySchema = z.object({
+  challengeId: z.string().uuid(),
+  credential: webauthnCredentialResponseSchema,
+});
+export type PasskeyAuthenticationVerify = z.infer<typeof passkeyAuthenticationVerifySchema>;
+
+export const passkeySchema = z.object({
+  id: z.string().uuid(),
+  name: z.string().nullable(),
+  createdAt: z.string().datetime(),
+  lastUsedAt: z.string().datetime().nullable(),
+});
+export type Passkey = z.infer<typeof passkeySchema>;
+
+export const passkeysListSchema = z.object({
+  passkeys: z.array(passkeySchema),
+});
+export type PasskeysList = z.infer<typeof passkeysListSchema>;
+
 export const grantEntitlementSchema = z.object({
   userId: z.string().uuid(),
   service: z.string().min(1),

@@ -83,5 +83,32 @@ export const entitlements = pgTable(
   (t) => [index("entitlements_user_idx").on(t.userId)],
 );
 
-export const schema = { users, identities, loginCodes, sessions, entitlements };
+export const webauthnCredentials = pgTable(
+  "webauthn_credentials",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    credentialId: text("credential_id").notNull().unique(),
+    publicKey: text("public_key").notNull(), // base64url-encoded
+    counter: integer("counter").notNull().default(0),
+    transports: text("transports"), // JSON-encoded AuthenticatorTransportFuture[]
+    deviceType: text("device_type").notNull(), // singleDevice | multiDevice
+    backedUp: boolean("backed_up").notNull().default(false),
+    name: text("name"),
+    createdAt: ts("created_at").notNull().defaultNow(),
+    lastUsedAt: ts("last_used_at"),
+  },
+  (t) => [index("webauthn_credentials_user_idx").on(t.userId)],
+);
+
+export const schema = {
+  users,
+  identities,
+  loginCodes,
+  sessions,
+  entitlements,
+  webauthnCredentials,
+};
 export type Schema = typeof schema;

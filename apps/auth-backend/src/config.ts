@@ -31,6 +31,12 @@ export const env = loadEnv(
     // Manual/admin entitlement grants (until payment-backend is the source of
     // truth). Required header `X-Admin-Key` on /admin/* routes; unset disables them.
     ADMIN_API_KEY: z.string().optional(),
+
+    // WebAuthn (passkeys) — rpID is the registrable domain shared across
+    // *.outegro.com, rpOrigin is the exact origin the ceremony runs from.
+    WEBAUTHN_RP_ID: z.string().default("outegro.com"),
+    WEBAUTHN_RP_ORIGIN: z.string().default("https://auth.outegro.com"),
+    WEBAUTHN_RP_NAME: z.string().default("Outegro"),
   }),
 );
 

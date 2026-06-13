@@ -144,10 +144,19 @@ export class AuthService {
         .where(eq(users.id, user.id));
     }
 
+    return this.startSession(user.id, email, meta);
+  }
+
+  /** Create a session + tokens for an already-authenticated user (email-code or passkey). */
+  async startSession(
+    userId: string,
+    email: string,
+    meta: ReqMeta,
+  ): Promise<{ accessToken: string; expiresIn: number; refreshToken: string; user: PublicUser }> {
     const [session] = await this.db
       .insert(sessions)
       .values({
-        userId: user.id,
+        userId,
         userAgent: meta.userAgent,
         ip: meta.ip,
         country: meta.country,
@@ -157,23 +166,23 @@ export class AuthService {
     if (!session)
       throw new HttpException("Failed to create session", HttpStatus.INTERNAL_SERVER_ERROR);
 
-    const roles = await this.getRoles(user.id);
+    const roles = await this.getRoles(userId);
     const { accessToken, expiresIn } = await this.tokens.signAccess(
-      user.id,
+      userId,
       session.id,
       email,
       roles,
     );
-    const refreshToken = await this.tokens.issueRefresh(session.id, user.id);
+    const refreshToken = await this.tokens.issueRefresh(session.id, userId);
 
     // Security notification — non-disableable, always queued regardless of preferences.
-    this.publishSecurityAlert(user.id, email, `Новый вход в аккаунт: ${describeSession(session)}.`);
+    this.publishSecurityAlert(userId, email, `Новый вход в аккаунт: ${describeSession(session)}.`);
 
     return {
       accessToken,
       expiresIn,
       refreshToken,
-      user: { id: user.id, email, emailVerified: true, roles },
+      user: { id: userId, email, emailVerified: true, roles },
     };
   }
 

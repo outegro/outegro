@@ -6,6 +6,7 @@ import { AuthModule } from "./auth/auth.module";
 import { env } from "./config";
 import { DbModule } from "./db/db.module";
 import { HealthController } from "./health.controller";
+import { PasskeysModule } from "./passkeys/passkeys.module";
 import { RedisModule } from "./redis/redis.module";
 import { TokensModule } from "./tokens/tokens.module";
 
@@ -28,7 +29,15 @@ const messaging = env.RABBITMQ_URL
   : [];
 
 @Module({
-  imports: [DbModule, RedisModule, TokensModule, AuthModule, AdminModule, ...messaging],
+  imports: [
+    DbModule,
+    RedisModule,
+    TokensModule,
+    AuthModule,
+    AdminModule,
+    PasskeysModule,
+    ...messaging,
+  ],
   controllers: [HealthController],
 })
 export class AppModule {}
