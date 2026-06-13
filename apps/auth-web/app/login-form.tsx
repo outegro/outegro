@@ -1,5 +1,6 @@
 "use client";
 
+import { startAuthentication } from "@simplewebauthn/browser";
 import { useRouter } from "next/navigation";
 import { type FormEvent, useState } from "react";
 
@@ -42,6 +43,30 @@ export function LoginForm() {
     setLoading(false);
     if (res.ok) router.push("/profile");
     else setError("Неверный или просроченный код.");
+  }
+
+  async function onPasskey() {
+    setLoading(true);
+    setError(null);
+    try {
+      const optRes = await fetch("/api/auth/passkeys/authentication/options", { method: "POST" });
+      if (!optRes.ok) throw new Error("options");
+      const { challengeId, options } = await optRes.json();
+      const credential = await startAuthentication({ optionsJSON: options });
+      const verifyRes = await fetch("/api/auth/passkeys/authentication/verify", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ challengeId, credential }),
+      });
+      if (!verifyRes.ok) throw new Error("verify");
+      router.push("/profile");
+    } catch (err) {
+      if ((err as Error).name !== "NotAllowedError" && (err as Error).name !== "AbortError") {
+        setError("Не удалось войти по passkey.");
+      }
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -94,6 +119,29 @@ export function LoginForm() {
       )}
 
       {error && <p className="mt-4 text-red-400 text-sm">{error}</p>}
+
+      <div className="my-6 flex items-center gap-3 text-[var(--muted)] text-xs">
+        <span className="h-px flex-1 bg-[var(--border)]" />
+        или
+        <span className="h-px flex-1 bg-[var(--border)]" />
+      </div>
+
+      <div className="flex flex-col gap-3">
+        <button
+          type="button"
+          onClick={onPasskey}
+          disabled={loading}
+          className="w-full rounded-lg border border-[var(--border)] px-4 py-3 text-sm transition hover:border-[var(--accent)] disabled:opacity-50"
+        >
+          Войти по passkey
+        </button>
+        <a
+          href="/api/auth/google/start"
+          className="w-full rounded-lg border border-[var(--border)] px-4 py-3 text-center text-sm transition hover:border-[var(--accent)]"
+        >
+          Войти через Google
+        </a>
+      </div>
     </div>
   );
 }

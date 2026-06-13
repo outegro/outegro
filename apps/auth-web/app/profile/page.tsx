@@ -1,5 +1,7 @@
 import { redirect } from "next/navigation";
 import { getMe } from "@/lib/backend";
+import { PasskeysSection } from "./passkeys-section";
+import { SessionsSection } from "./sessions-section";
 
 export default async function ProfilePage() {
   const me = await getMe();
@@ -7,7 +9,7 @@ export default async function ProfilePage() {
   if (!me) redirect("/api/auth/refresh?next=/profile");
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-6">
+    <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-6 py-12">
       <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-8">
         <div className="mb-6 flex items-center gap-4">
           <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[var(--accent)] font-semibold text-lg text-white">
@@ -31,6 +33,20 @@ export default async function ProfilePage() {
             <dd>{me.roles.length ? me.roles.join(", ") : "—"}</dd>
           </div>
         </dl>
+
+        <section className="mt-8">
+          <h2 className="mb-3 font-medium text-sm">Способы входа</h2>
+          <a
+            href="/api/auth/google/link"
+            className="flex w-full items-center justify-center gap-2 rounded-lg border border-[var(--border)] px-4 py-3 text-sm transition hover:border-[var(--accent)]"
+          >
+            Привязать Google-аккаунт
+          </a>
+        </section>
+
+        <PasskeysSection />
+
+        <SessionsSection />
 
         <form action="/api/auth/logout" method="post" className="mt-8">
           <button

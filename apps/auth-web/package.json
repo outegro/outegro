@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@outegro/contracts": "workspace:*",
+    "@simplewebauthn/browser": "^13.1.2",
     "next": "^16.2.7",
     "react": "^19.2.7",
     "react-dom": "^19.2.7"
