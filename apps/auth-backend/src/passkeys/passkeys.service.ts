@@ -16,7 +16,7 @@ import {
 import { isoBase64URL } from "@simplewebauthn/server/helpers";
 import { and, eq } from "drizzle-orm";
 import type Redis from "ioredis";
-import type { AuthService, PublicUser, ReqMeta } from "../auth/auth.service";
+import { AuthService, type PublicUser, type ReqMeta } from "../auth/auth.service";
 import { env } from "../config";
 import { type AuthDb, DB } from "../db/db.module";
 import { users, webauthnCredentials } from "../db/schema";
