@@ -37,6 +37,13 @@ export const env = loadEnv(
     WEBAUTHN_RP_ID: z.string().default("outegro.com"),
     WEBAUTHN_RP_ORIGIN: z.string().default("https://auth.outegro.com"),
     WEBAUTHN_RP_NAME: z.string().default("Outegro"),
+
+    // Google OAuth — unset disables /auth/google/* (404s).
+    GOOGLE_CLIENT_ID: z.string().optional(),
+    GOOGLE_CLIENT_SECRET: z.string().optional(),
+    GOOGLE_REDIRECT_URI: z.string().default("https://api.outegro.com/auth/google/callback"),
+    // Where to send the browser after a successful Google login/link.
+    GOOGLE_SUCCESS_REDIRECT: z.string().default("https://auth.outegro.com/profile"),
   }),
 );
 

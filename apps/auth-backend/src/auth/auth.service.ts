@@ -255,6 +255,56 @@ export class AuthService {
     return created;
   }
 
+  /**
+   * Google login: find the user already linked to this Google subject, or
+   * link/create one by verified email. Mirrors findOrCreateUser's eventing.
+   */
+  async findOrLinkGoogleUser(googleSub: string, email: string): Promise<typeof users.$inferSelect> {
+    const [existingIdentity] = await this.db
+      .select()
+      .from(identities)
+      .where(and(eq(identities.provider, "google"), eq(identities.subject, googleSub)))
+      .limit(1);
+    if (existingIdentity) {
+      const [user] = await this.db
+        .select()
+        .from(users)
+        .where(eq(users.id, existingIdentity.userId))
+        .limit(1);
+      if (!user) throw new HttpException("Not found", HttpStatus.NOT_FOUND);
+      return user;
+    }
+
+    const user = await this.findOrCreateUser(email);
+    await this.db
+      .insert(identities)
+      .values({ userId: user.id, provider: "google", subject: googleSub });
+    if (!user.emailVerified) {
+      await this.db.update(users).set({ emailVerified: true }).where(eq(users.id, user.id));
+      user.emailVerified = true;
+    }
+    return user;
+  }
+
+  /** Link a Google identity to an already-authenticated user (profile flow). */
+  async linkGoogleIdentity(userId: string, googleSub: string): Promise<void> {
+    const [existing] = await this.db
+      .select()
+      .from(identities)
+      .where(and(eq(identities.provider, "google"), eq(identities.subject, googleSub)))
+      .limit(1);
+    if (existing) {
+      if (existing.userId !== userId) {
+        throw new HttpException(
+          "This Google account is already linked to another user",
+          HttpStatus.CONFLICT,
+        );
+      }
+      return;
+    }
+    await this.db.insert(identities).values({ userId, provider: "google", subject: googleSub });
+  }
+
   /** List active (non-revoked) sessions for a user, marking the current one. */
   async listSessions(userId: string, currentSessionId: string): Promise<Session[]> {
     const rows = await this.db

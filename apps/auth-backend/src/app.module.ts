@@ -5,6 +5,7 @@ import { AdminModule } from "./admin/admin.module";
 import { AuthModule } from "./auth/auth.module";
 import { env } from "./config";
 import { DbModule } from "./db/db.module";
+import { GoogleModule } from "./google/google.module";
 import { HealthController } from "./health.controller";
 import { PasskeysModule } from "./passkeys/passkeys.module";
 import { RedisModule } from "./redis/redis.module";
@@ -36,6 +37,7 @@ const messaging = env.RABBITMQ_URL
     AuthModule,
     AdminModule,
     PasskeysModule,
+    GoogleModule,
     ...messaging,
   ],
   controllers: [HealthController],
