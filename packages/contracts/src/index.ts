@@ -52,5 +52,29 @@ export const meResponseSchema = z.object({
 });
 export type MeResponse = z.infer<typeof meResponseSchema>;
 
+// --- Entitlements (Chapter 4) ---
+
+export const entitlementSchema = z.object({
+  id: z.string().uuid(),
+  service: z.string(),
+  role: z.string(),
+  source: z.string(),
+  expiresAt: z.string().datetime().nullable(),
+});
+export type Entitlement = z.infer<typeof entitlementSchema>;
+
+export const entitlementsResponseSchema = z.object({
+  entitlements: z.array(entitlementSchema),
+});
+export type EntitlementsResponse = z.infer<typeof entitlementsResponseSchema>;
+
+export const grantEntitlementSchema = z.object({
+  userId: z.string().uuid(),
+  service: z.string().min(1),
+  role: z.string().min(1),
+  expiresAt: z.string().datetime().nullable().optional(),
+});
+export type GrantEntitlement = z.infer<typeof grantEntitlementSchema>;
+
 // Re-export zod so consumers share one instance/version.
 export { z };

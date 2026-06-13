@@ -27,6 +27,10 @@ export const env = loadEnv(
 
     // Refresh cookie is set on this domain for SSO across *.outegro.com.
     COOKIE_DOMAIN: z.string().optional(),
+
+    // Manual/admin entitlement grants (until payment-backend is the source of
+    // truth). Required header `X-Admin-Key` on /admin/* routes; unset disables them.
+    ADMIN_API_KEY: z.string().optional(),
   }),
 );
 

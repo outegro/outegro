@@ -1,8 +1,15 @@
 import { createHash, randomInt, randomUUID } from "node:crypto";
 import { AmqpConnection } from "@golevelup/nestjs-rabbitmq";
 import { HttpException, HttpStatus, Inject, Injectable, Optional } from "@nestjs/common";
+import type { Entitlement } from "@outegro/contracts";
 import { createLogger } from "@outegro/core";
-import { Exchanges, type NotifyRequestedEvent, RoutingKeys } from "@outegro/events";
+import {
+  AuthRoutingKeys,
+  type AuthUserCreatedEvent,
+  Exchanges,
+  type NotifyRequestedEvent,
+  RoutingKeys,
+} from "@outegro/events";
 import { and, desc, eq, gt, isNull, or } from "drizzle-orm";
 import { env } from "../config";
 import { type AuthDb, DB } from "../db/db.module";
@@ -210,7 +217,74 @@ export class AuthService {
       .insert(identities)
       .values({ userId: created.id, provider: "email", subject: email });
     logger.info("user created", { userId: created.id });
+
+    if (this.amqp) {
+      const event: AuthUserCreatedEvent = {
+        userId: created.id,
+        email: created.email,
+        createdAt: created.createdAt.toISOString(),
+      };
+      void Promise.resolve(
+        this.amqp.publish(Exchanges.Auth, AuthRoutingKeys.UserCreated, event, {
+          persistent: true,
+        }),
+      ).catch((error) => logger.error("publish user.created failed", { error: String(error) }));
+    }
+
     return created;
+  }
+
+  /** Authoritative entitlement rows for a user — the source other services should trust. */
+  async getEntitlements(userId: string): Promise<Entitlement[]> {
+    const rows = await this.db
+      .select({
+        id: entitlements.id,
+        service: entitlements.service,
+        role: entitlements.role,
+        source: entitlements.source,
+        expiresAt: entitlements.expiresAt,
+      })
+      .from(entitlements)
+      .where(
+        and(
+          eq(entitlements.userId, userId),
+          or(isNull(entitlements.expiresAt), gt(entitlements.expiresAt, new Date())),
+        ),
+      );
+    return rows.map((r) => ({
+      ...r,
+      expiresAt: r.expiresAt ? r.expiresAt.toISOString() : null,
+    }));
+  }
+
+  /** Manual/admin grant — `source` defaults to "manual" until payment-backend exists. */
+  async grantEntitlement(input: {
+    userId: string;
+    service: string;
+    role: string;
+    expiresAt?: string | null;
+  }): Promise<void> {
+    const [user] = await this.db.select().from(users).where(eq(users.id, input.userId)).limit(1);
+    if (!user) throw new HttpException("User not found", HttpStatus.NOT_FOUND);
+
+    await this.db.insert(entitlements).values({
+      userId: input.userId,
+      service: input.service,
+      role: input.role,
+      source: "manual",
+      expiresAt: input.expiresAt ? new Date(input.expiresAt) : null,
+    });
+    logger.info("entitlement granted", {
+      userId: input.userId,
+      service: input.service,
+      role: input.role,
+    });
+  }
+
+  /** Revoke a manually-granted entitlement by id. */
+  async revokeEntitlement(id: string): Promise<void> {
+    await this.db.delete(entitlements).where(eq(entitlements.id, id));
+    logger.info("entitlement revoked", { id });
   }
 
   private async getRoles(userId: string): Promise<string[]> {

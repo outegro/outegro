@@ -7,6 +7,8 @@
 export const Exchanges = {
   /** Topic exchange for all asynchronous notifications. */
   Notify: "notify",
+  /** Topic exchange for domain events emitted by auth-backend. */
+  Auth: "auth",
 } as const;
 export type Exchange = (typeof Exchanges)[keyof typeof Exchanges];
 
@@ -19,6 +21,21 @@ export const RoutingKeys = {
   NotifySecurityAlert: "notify.security_alert",
 } as const;
 export type RoutingKey = (typeof RoutingKeys)[keyof typeof RoutingKeys];
+
+/** Domain events published on `Exchanges.Auth` for other services to consume. */
+export const AuthRoutingKeys = {
+  /** A new user account was created (first login). */
+  UserCreated: "auth.user.created",
+  /** A session was revoked (logout, reuse-detection, or explicit terminate). */
+  SessionTerminated: "auth.session.terminated",
+} as const;
+export type AuthRoutingKey = (typeof AuthRoutingKeys)[keyof typeof AuthRoutingKeys];
+
+export interface AuthUserCreatedEvent {
+  userId: string;
+  email: string;
+  createdAt: string;
+}
 
 export type NotificationChannel = "email" | "telegram";
 

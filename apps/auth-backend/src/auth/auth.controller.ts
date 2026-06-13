@@ -10,7 +10,11 @@ import {
   UseGuards,
 } from "@nestjs/common";
 import type { AuthUser } from "@outegro/auth-client";
-import { loginRequestSchema, loginVerifySchema } from "@outegro/contracts";
+import {
+  type EntitlementsResponse,
+  loginRequestSchema,
+  loginVerifySchema,
+} from "@outegro/contracts";
 import type { Request, Response } from "express";
 import { CurrentUser } from "../common/current-user.decorator";
 import { JwtAuthGuard } from "../common/jwt-auth.guard";
@@ -98,5 +102,16 @@ export class AuthController {
   @Get("me")
   async me(@CurrentUser() user: AuthUser) {
     return this.auth.me(user.sub);
+  }
+
+  /**
+   * Authoritative entitlements for the current user — other services should
+   * call this (or trust fresh token claims) rather than maintain their own
+   * role store (contract §10 point 5).
+   */
+  @UseGuards(JwtAuthGuard)
+  @Get("entitlements")
+  async entitlements(@CurrentUser() user: AuthUser): Promise<EntitlementsResponse> {
+    return { entitlements: await this.auth.getEntitlements(user.sub) };
   }
 }

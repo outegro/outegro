@@ -1,6 +1,7 @@
 import { RabbitMQModule } from "@golevelup/nestjs-rabbitmq";
 import { Module } from "@nestjs/common";
 import { Exchanges } from "@outegro/events";
+import { AdminModule } from "./admin/admin.module";
 import { AuthModule } from "./auth/auth.module";
 import { env } from "./config";
 import { DbModule } from "./db/db.module";
@@ -15,7 +16,10 @@ const messaging = env.RABBITMQ_URL
       {
         ...RabbitMQModule.forRoot({
           uri: env.RABBITMQ_URL,
-          exchanges: [{ name: Exchanges.Notify, type: "topic" }],
+          exchanges: [
+            { name: Exchanges.Notify, type: "topic" },
+            { name: Exchanges.Auth, type: "topic" },
+          ],
           connectionInitOptions: { wait: false },
         }),
         global: true,
@@ -24,7 +28,7 @@ const messaging = env.RABBITMQ_URL
   : [];
 
 @Module({
-  imports: [DbModule, RedisModule, TokensModule, AuthModule, ...messaging],
+  imports: [DbModule, RedisModule, TokensModule, AuthModule, AdminModule, ...messaging],
   controllers: [HealthController],
 })
 export class AppModule {}
