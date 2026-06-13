@@ -68,6 +68,25 @@ export const entitlementsResponseSchema = z.object({
 });
 export type EntitlementsResponse = z.infer<typeof entitlementsResponseSchema>;
 
+// --- Sessions (Chapter 4) ---
+
+export const sessionSchema = z.object({
+  id: z.string().uuid(),
+  userAgent: z.string().nullable(),
+  ip: z.string().nullable(),
+  country: z.string().nullable(),
+  city: z.string().nullable(),
+  createdAt: z.string().datetime(),
+  lastActiveAt: z.string().datetime(),
+  current: z.boolean(),
+});
+export type Session = z.infer<typeof sessionSchema>;
+
+export const sessionsListSchema = z.object({
+  sessions: z.array(sessionSchema),
+});
+export type SessionsList = z.infer<typeof sessionsListSchema>;
+
 export const grantEntitlementSchema = z.object({
   userId: z.string().uuid(),
   service: z.string().min(1),

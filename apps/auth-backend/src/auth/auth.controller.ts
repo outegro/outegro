@@ -1,8 +1,10 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   HttpCode,
+  Param,
   Post,
   Req,
   Res,
@@ -14,6 +16,7 @@ import {
   type EntitlementsResponse,
   loginRequestSchema,
   loginVerifySchema,
+  type SessionsList,
 } from "@outegro/contracts";
 import type { Request, Response } from "express";
 import { CurrentUser } from "../common/current-user.decorator";
@@ -114,4 +117,31 @@ export class AuthController {
   async entitlements(@CurrentUser() user: AuthUser): Promise<EntitlementsResponse> {
     return { entitlements: await this.auth.getEntitlements(user.sub) };
   }
+
+  /** List active sessions, marking the one the request is authenticated with. */
+  @UseGuards(JwtAuthGuard)
+  @Get("sessions")
+  async sessions(@CurrentUser() user: AuthUser): Promise<SessionsList> {
+    return { sessions: await this.auth.listSessions(user.sub, currentSessionId(user)) };
+  }
+
+  /** Terminate one session (revokes its refresh token; security alert if not the current one). */
+  @UseGuards(JwtAuthGuard)
+  @Delete("sessions/:id")
+  @HttpCode(204)
+  async terminateSession(@CurrentUser() user: AuthUser, @Param("id") id: string): Promise<void> {
+    await this.auth.terminateSession(user.sub, id, currentSessionId(user));
+  }
+
+  /** "Log out everywhere else" — terminate every session but the current one. */
+  @UseGuards(JwtAuthGuard)
+  @Post("sessions/revoke-others")
+  async revokeOthers(@CurrentUser() user: AuthUser): Promise<{ revoked: number }> {
+    return { revoked: await this.auth.terminateOtherSessions(user.sub, currentSessionId(user)) };
+  }
+}
+
+function currentSessionId(user: AuthUser): string {
+  if (!user.sid) throw new UnauthorizedException("Token has no session id");
+  return user.sid;
 }

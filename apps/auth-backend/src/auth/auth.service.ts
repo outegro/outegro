@@ -1,7 +1,7 @@
 import { createHash, randomInt, randomUUID } from "node:crypto";
 import { AmqpConnection } from "@golevelup/nestjs-rabbitmq";
 import { HttpException, HttpStatus, Inject, Injectable, Optional } from "@nestjs/common";
-import type { Entitlement } from "@outegro/contracts";
+import type { Entitlement, Session } from "@outegro/contracts";
 import { createLogger } from "@outegro/core";
 import {
   AuthRoutingKeys,
@@ -10,7 +10,7 @@ import {
   type NotifyRequestedEvent,
   RoutingKeys,
 } from "@outegro/events";
-import { and, desc, eq, gt, isNull, or } from "drizzle-orm";
+import { and, desc, eq, gt, isNull, ne, or } from "drizzle-orm";
 import { env } from "../config";
 import { type AuthDb, DB } from "../db/db.module";
 import { entitlements, identities, loginCodes, sessions, users } from "../db/schema";
@@ -35,6 +35,11 @@ export interface PublicUser {
 
 function hashCode(email: string, code: string): string {
   return createHash("sha256").update(`${email}:${code}`).digest("hex");
+}
+
+function describeSession(s: { userAgent?: string | null; country?: string | null; city?: string | null }): string {
+  const parts = [s.userAgent, [s.city, s.country].filter(Boolean).join(", ")].filter(Boolean);
+  return parts.length > 0 ? parts.join(" — ") : "неизвестное устройство";
 }
 
 @Injectable()
@@ -157,6 +162,13 @@ export class AuthService {
     );
     const refreshToken = await this.tokens.issueRefresh(session.id, user.id);
 
+    // Security notification — non-disableable, always queued regardless of preferences.
+    this.publishSecurityAlert(
+      user.id,
+      email,
+      `Новый вход в аккаунт: ${describeSession(session)}.`,
+    );
+
     return {
       accessToken,
       expiresIn,
@@ -232,6 +244,108 @@ export class AuthService {
     }
 
     return created;
+  }
+
+  /** List active (non-revoked) sessions for a user, marking the current one. */
+  async listSessions(userId: string, currentSessionId: string): Promise<Session[]> {
+    const rows = await this.db
+      .select()
+      .from(sessions)
+      .where(and(eq(sessions.userId, userId), isNull(sessions.revokedAt)))
+      .orderBy(desc(sessions.lastActiveAt));
+    return rows.map((s) => ({
+      id: s.id,
+      userAgent: s.userAgent,
+      ip: s.ip,
+      country: s.country,
+      city: s.city,
+      createdAt: s.createdAt.toISOString(),
+      lastActiveAt: s.lastActiveAt.toISOString(),
+      current: s.id === currentSessionId,
+    }));
+  }
+
+  /** Revoke one session (must belong to the user). Fires a security alert unless it's the current one. */
+  async terminateSession(userId: string, sessionId: string, currentSessionId: string): Promise<void> {
+    const [session] = await this.db
+      .select()
+      .from(sessions)
+      .where(and(eq(sessions.id, sessionId), eq(sessions.userId, userId), isNull(sessions.revokedAt)))
+      .limit(1);
+    if (!session) throw new HttpException("Session not found", HttpStatus.NOT_FOUND);
+
+    await this.revokeSessionRecord(session, currentSessionId);
+  }
+
+  /** Revoke all sessions except the current one (e.g. "log out everywhere else"). */
+  async terminateOtherSessions(userId: string, currentSessionId: string): Promise<number> {
+    const rows = await this.db
+      .select()
+      .from(sessions)
+      .where(
+        and(
+          eq(sessions.userId, userId),
+          isNull(sessions.revokedAt),
+          ne(sessions.id, currentSessionId),
+        ),
+      );
+    for (const session of rows) {
+      await this.revokeSessionRecord(session, currentSessionId);
+    }
+    return rows.length;
+  }
+
+  private async revokeSessionRecord(
+    session: typeof sessions.$inferSelect,
+    currentSessionId: string,
+  ): Promise<void> {
+    await this.tokens.revokeSession(session.id);
+    await this.db.update(sessions).set({ revokedAt: new Date() }).where(eq(sessions.id, session.id));
+
+    if (this.amqp) {
+      void Promise.resolve(
+        this.amqp.publish(Exchanges.Auth, AuthRoutingKeys.SessionTerminated, {
+          userId: session.userId,
+          sessionId: session.id,
+        }),
+      ).catch((error) =>
+        logger.error("publish session.terminated failed", { error: String(error) }),
+      );
+    }
+
+    // Don't alert the session that's terminating itself (e.g. plain logout).
+    if (session.id === currentSessionId) return;
+
+    const [user] = await this.db.select().from(users).where(eq(users.id, session.userId)).limit(1);
+    if (!user) return;
+    this.publishSecurityAlert(
+      user.id,
+      user.email,
+      `Сессия завершена: ${describeSession(session)}.`,
+    );
+  }
+
+  private publishSecurityAlert(userId: string, email: string, message: string): void {
+    if (!this.amqp) {
+      logger.info("security alert (no delivery path — logged)", { userId, message });
+      return;
+    }
+    const event: NotifyRequestedEvent = {
+      id: randomUUID(),
+      userId,
+      template: "security_alert",
+      channels: ["email"],
+      to: { email },
+      data: { message },
+      requestedAt: new Date().toISOString(),
+    };
+    void Promise.resolve(
+      this.amqp.publish(Exchanges.Notify, RoutingKeys.NotifySecurityAlert, event, {
+        priority: 10,
+        persistent: true,
+        messageId: event.id,
+      }),
+    ).catch((error) => logger.error("publish security alert failed", { error: String(error) }));
   }
 
   /** Authoritative entitlement rows for a user — the source other services should trust. */
