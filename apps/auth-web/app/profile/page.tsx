@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getMe } from "@/lib/backend";
 import { PasskeysSection } from "./passkeys-section";
 import { SessionsSection } from "./sessions-section";
+import { TelegramSection } from "./telegram-section";
 
 export default async function ProfilePage() {
   const me = await getMe();
@@ -45,6 +46,8 @@ export default async function ProfilePage() {
         </section>
 
         <PasskeysSection />
+
+        <TelegramSection />
 
         <SessionsSection />
 

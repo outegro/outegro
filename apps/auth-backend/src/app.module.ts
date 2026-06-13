@@ -9,6 +9,7 @@ import { GoogleModule } from "./google/google.module";
 import { HealthController } from "./health.controller";
 import { PasskeysModule } from "./passkeys/passkeys.module";
 import { RedisModule } from "./redis/redis.module";
+import { TelegramModule } from "./telegram/telegram.module";
 import { TokensModule } from "./tokens/tokens.module";
 
 // RabbitMQ is optional — auth boots & logs codes even without it (dev/degraded).
@@ -38,6 +39,7 @@ const messaging = env.RABBITMQ_URL
     AdminModule,
     PasskeysModule,
     GoogleModule,
+    TelegramModule,
     ...messaging,
   ],
   controllers: [HealthController],

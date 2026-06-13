@@ -34,6 +34,14 @@ export class DeliveryService {
         .limit(1);
       if (existing?.status === "sent") continue;
 
+      // Telegram is best-effort: if the user never linked a chat, skip it
+      // gracefully (no throw → no nack/redelivery) rather than fail the event.
+      if (channel === "telegram" && !(await this.resolveTelegramChatId(event))) {
+        await this.upsertLog(event, channel, "skipped", {});
+        logger.info("no telegram link — skipping", { id: event.id, template: event.template });
+        continue;
+      }
+
       try {
         const result = await this.dispatch(channel, event, rendered);
         await this.upsertLog(event, channel, "sent", { providerMessageId: result.id ?? null });
@@ -55,19 +63,22 @@ export class DeliveryService {
       return this.email.send(event.to.email, rendered.subject, rendered.text, rendered.html);
     }
     if (channel === "telegram") {
-      let chatId = event.to.telegramChatId;
-      if (!chatId) {
-        const [link] = await this.db
-          .select()
-          .from(telegramLinks)
-          .where(eq(telegramLinks.userId, event.userId))
-          .limit(1);
-        chatId = link?.chatId;
-      }
+      const chatId = await this.resolveTelegramChatId(event);
       if (!chatId) throw new Error("no telegram link for user");
       return this.telegram.send(chatId, rendered.text);
     }
     throw new Error(`unknown channel: ${channel}`);
+  }
+
+  /** Explicit target on the event, else the user's linked Telegram chat (or null). */
+  private async resolveTelegramChatId(event: NotifyRequestedEvent): Promise<string | undefined> {
+    if (event.to.telegramChatId) return event.to.telegramChatId;
+    const [link] = await this.db
+      .select({ chatId: telegramLinks.chatId })
+      .from(telegramLinks)
+      .where(eq(telegramLinks.userId, event.userId))
+      .limit(1);
+    return link?.chatId;
   }
 
   private async resolveChannels(event: NotifyRequestedEvent): Promise<NotificationChannel[]> {
@@ -93,7 +104,7 @@ export class DeliveryService {
   private async upsertLog(
     event: NotifyRequestedEvent,
     channel: NotificationChannel,
-    status: "sent" | "failed",
+    status: "sent" | "failed" | "skipped",
     extra: { providerMessageId?: string | null; error?: string },
   ): Promise<void> {
     await this.db

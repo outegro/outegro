@@ -127,5 +127,19 @@ export const grantEntitlementSchema = z.object({
 });
 export type GrantEntitlement = z.infer<typeof grantEntitlementSchema>;
 
+// --- Telegram linking (Chapter 6) ---
+
+/** Deep-link to start the bot with a one-time linking nonce: t.me/<bot>?start=<nonce>. */
+export const telegramLinkTokenResponseSchema = z.object({
+  url: z.string().url(),
+  expiresIn: z.number().int().positive(),
+});
+export type TelegramLinkTokenResponse = z.infer<typeof telegramLinkTokenResponseSchema>;
+
+export const telegramLinkStatusSchema = z.object({
+  linked: z.boolean(),
+});
+export type TelegramLinkStatus = z.infer<typeof telegramLinkStatusSchema>;
+
 // Re-export zod so consumers share one instance/version.
 export { z };

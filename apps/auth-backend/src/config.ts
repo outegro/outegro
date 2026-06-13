@@ -44,6 +44,14 @@ export const env = loadEnv(
     GOOGLE_REDIRECT_URI: z.string().default("https://api.outegro.com/auth/google/callback"),
     // Where to send the browser after a successful Google login/link.
     GOOGLE_SUCCESS_REDIRECT: z.string().default("https://auth.outegro.com/profile"),
+
+    // Telegram linking — public bot @username (no @) used to build the t.me deep
+    // link; unset disables /auth/telegram/link-token (404s).
+    TELEGRAM_BOT_USERNAME: z.string().optional(),
+    TELEGRAM_LINK_TTL: z.coerce.number().default(600), // 10 min nonce lifetime
+    // Shared service-to-service key — notifications-backend calls /internal/* with
+    // header `X-Internal-Key`. Unset disables the internal routes.
+    INTERNAL_API_KEY: z.string().optional(),
   }),
 );
 

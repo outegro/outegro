@@ -402,7 +402,8 @@ export class AuthService {
       id: randomUUID(),
       userId,
       template: "security_alert",
-      channels: ["email"],
+      // Telegram is best-effort: delivery skips it when the user has no link.
+      channels: ["email", "telegram"],
       to: { email },
       data: { message },
       requestedAt: new Date().toISOString(),
