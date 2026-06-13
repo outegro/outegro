@@ -37,7 +37,11 @@ function hashCode(email: string, code: string): string {
   return createHash("sha256").update(`${email}:${code}`).digest("hex");
 }
 
-function describeSession(s: { userAgent?: string | null; country?: string | null; city?: string | null }): string {
+function describeSession(s: {
+  userAgent?: string | null;
+  country?: string | null;
+  city?: string | null;
+}): string {
   const parts = [s.userAgent, [s.city, s.country].filter(Boolean).join(", ")].filter(Boolean);
   return parts.length > 0 ? parts.join(" — ") : "неизвестное устройство";
 }
@@ -163,11 +167,7 @@ export class AuthService {
     const refreshToken = await this.tokens.issueRefresh(session.id, user.id);
 
     // Security notification — non-disableable, always queued regardless of preferences.
-    this.publishSecurityAlert(
-      user.id,
-      email,
-      `Новый вход в аккаунт: ${describeSession(session)}.`,
-    );
+    this.publishSecurityAlert(user.id, email, `Новый вход в аккаунт: ${describeSession(session)}.`);
 
     return {
       accessToken,
@@ -266,11 +266,17 @@ export class AuthService {
   }
 
   /** Revoke one session (must belong to the user). Fires a security alert unless it's the current one. */
-  async terminateSession(userId: string, sessionId: string, currentSessionId: string): Promise<void> {
+  async terminateSession(
+    userId: string,
+    sessionId: string,
+    currentSessionId: string,
+  ): Promise<void> {
     const [session] = await this.db
       .select()
       .from(sessions)
-      .where(and(eq(sessions.id, sessionId), eq(sessions.userId, userId), isNull(sessions.revokedAt)))
+      .where(
+        and(eq(sessions.id, sessionId), eq(sessions.userId, userId), isNull(sessions.revokedAt)),
+      )
       .limit(1);
     if (!session) throw new HttpException("Session not found", HttpStatus.NOT_FOUND);
 
@@ -300,7 +306,10 @@ export class AuthService {
     currentSessionId: string,
   ): Promise<void> {
     await this.tokens.revokeSession(session.id);
-    await this.db.update(sessions).set({ revokedAt: new Date() }).where(eq(sessions.id, session.id));
+    await this.db
+      .update(sessions)
+      .set({ revokedAt: new Date() })
+      .where(eq(sessions.id, session.id));
 
     if (this.amqp) {
       void Promise.resolve(

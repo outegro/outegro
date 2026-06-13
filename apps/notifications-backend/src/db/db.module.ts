@@ -1,7 +1,6 @@
 import { Global, Module, type OnApplicationShutdown } from "@nestjs/common";
 import { createDb } from "@outegro/db";
 import type { PostgresJsDatabase } from "drizzle-orm/postgres-js";
-import type { Sql } from "postgres";
 import { env } from "../config";
 import { type Schema, schema } from "./schema";
 
